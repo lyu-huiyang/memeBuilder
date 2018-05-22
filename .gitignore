@@ -108,3 +108,7 @@ venv.bak/
 
 # vscode
 .vscode/
+
+# bin file
+dump.rdb
+*.dump
