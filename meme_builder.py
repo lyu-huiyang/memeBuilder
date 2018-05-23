@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # __author__ = lvhuiyang
 
+import os
 import base64
 from io import BytesIO
 from uuid import uuid4
 
 from PIL import Image
-from flask import Flask, request
 from celery import Celery
+from flask import Flask, request
 from redis import ConnectionPool, Redis
 
 app = Flask(__name__)
@@ -19,7 +20,7 @@ celery.conf.update(app.config)
 pool = ConnectionPool(host='localhost', port=6379, decode_responses=True)
 client = Redis(connection_pool=pool)
 
-ACCESS_TOKEN = ""
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN", "")
 
 
 def make_uuid():
@@ -35,12 +36,10 @@ def handler(uuid, text):
     :return:
     """
     output = BytesIO()
-    image = Image.open("/Users/lvhuiyang/Pictures/blog/0826/路由表举例.jpg")
-    # image = Image.open("/Users/lvhuiyang/Desktop/demo.jpeg")
+    image = Image.open("./source.jpeg")
     image.save(output, format="JPEG")
 
     im_data = output.getvalue()
-    # data_url = 'data:image/jpg;base64,' + str(base64.b64encode(im_data))
     client.set(uuid, base64.b64encode(im_data))
     return True
 
@@ -49,16 +48,16 @@ def handler(uuid, text):
 def index():
     text = request.form.get('text')
     token = request.form.get('token')
-    if text and token == "temp_token":
+    if text and token == ACCESS_TOKEN:
         text_uuid = client.get(text)
         if text_uuid:
-            return "生成地址: {}meme/{}/".format(request.url, text_uuid)
+            return '生成地址: {}meme/{}/ \n'.format(request.url, text_uuid)
         else:
             new_uuid = make_uuid()
             client.set(text, new_uuid)
             handler(new_uuid, text)
-            return "生成地址: {}meme/{}/".format(request.url, new_uuid)
-    return "参数不正确"
+            return '生成地址: {}meme/{}/ \n'.format(request.url, new_uuid)
+    return '参数不正确. \n'
 
 
 @app.route("/meme/<string:key>/", methods=['GET'])
@@ -66,13 +65,12 @@ def meme(key):
     value = client.get(key)
 
     if value is None:
-        return "访问地址不存在或者已经过期."
+        return '访问地址不存在或者已经过期.'
     elif value == "0":
-        return "当你看到当前页面的时候说明图片正在生成，请等待几秒尝试刷新."
+        return '当你看到当前页面的时候说明图片正在生成，请等待几秒尝试刷新.'
     else:
         img_value = "data:image/jpeg;base64," + value
-        print(img_value)
-        return "<img src={}/>".format(img_value)
+        return '<img src="{}"/>'.format(img_value)
 
 
 if __name__ == '__main__':
