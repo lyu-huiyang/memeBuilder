@@ -6,3 +6,4 @@ MarkupSafe==1.0
 Werkzeug==0.14.1
 celery==4.1.1
 Pillow==5.1.0
+redis==2.10.6
