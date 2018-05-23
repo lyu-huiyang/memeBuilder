@@ -54,8 +54,12 @@ def handler(uuid, text):
     return True
 
 
-@app.route("/", methods=['POST'])
+@app.route("/", methods=['GET', 'POST'])
 def index():
+    if request.method == 'GET':
+        return '请在终端输入 <strong style="color: blue">' \
+               'curl --data "text=要展示的文字（<21字符）&token=qc_token" ' \
+               'sticker.lvhuiyang.cn </strong> 生成对应文字表情包\n'
     text = request.form.get('text')
     token = request.form.get('token')
     if text and token == ACCESS_TOKEN:
@@ -84,7 +88,7 @@ def meme(key):
         return '当你看到当前页面的时候说明图片正在生成，请等待几秒尝试刷新.'
     else:
         img_value = "data:image/jpeg;base64," + value
-        return '<img src="{}"/>'.format(img_value)
+        return '<img src="{}" width="300"/>'.format(img_value)
 
 
 if __name__ == '__main__':
