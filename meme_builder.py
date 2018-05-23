@@ -6,10 +6,10 @@ import base64
 from io import BytesIO
 from uuid import uuid4
 
-from PIL import Image
 from celery import Celery
 from flask import Flask, request
 from redis import ConnectionPool, Redis
+from PIL import Image, ImageDraw, ImageFont
 
 app = Flask(__name__)
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379'
@@ -36,9 +36,19 @@ def handler(uuid, text):
     :return:
     """
     output = BytesIO()
-    image = Image.open("./source.jpeg")
-    image.save(output, format="JPEG")
 
+    # im -> PIL 打开图片的实例对象
+    im = Image.open("./source.jpeg")
+
+    # font -> 字体对象，使用`华文细黑.ttf`是因为中文报错
+    font = ImageFont.truetype(font="./华文细黑.ttf", size=40)
+
+    # draw -> 画笔对象，并进行书写
+    draw = ImageDraw.Draw(im)
+    draw.text(xy=(40, 800), text=text, fill=(0, 0, 0, 0), font=font)
+
+    # 保存，并以 base64 存储
+    im.save(output, format="JPEG")
     im_data = output.getvalue()
     client.set(uuid, base64.b64encode(im_data))
     return True
@@ -49,13 +59,17 @@ def index():
     text = request.form.get('text')
     token = request.form.get('token')
     if text and token == ACCESS_TOKEN:
+        if len(text) > 21:
+            return 'text 长度超出 21 个字符\n'
+
         text_uuid = client.get(text)
         if text_uuid:
             return '生成地址: {}meme/{}/ \n'.format(request.url, text_uuid)
         else:
             new_uuid = make_uuid()
             client.set(text, new_uuid)
-            handler(new_uuid, text)
+            client.set(new_uuid, "0")
+            handler.delay(new_uuid, text)
             return '生成地址: {}meme/{}/ \n'.format(request.url, new_uuid)
     return '参数不正确. \n'
 
